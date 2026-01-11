@@ -1,0 +1,11 @@
+name: MageRPGParty
+version: '1.0'
+main: me.thatonedevil.mageRPGParty.MageRPGParty
+api-version: '1.21'
+website: https://thatonedevil.github.io/
+author: ThatOneDevil
+depend: [PlaceholderAPI]
+commands:
+  party:
+    description: Main command for party management.
+    aliases: [p]
