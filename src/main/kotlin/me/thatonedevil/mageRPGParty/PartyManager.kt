@@ -3,6 +3,8 @@ package me.thatonedevil.mageRPGParty
 import me.thatonedevil.devilLib.utils.Utils.sendChat
 import me.thatonedevil.devilLib.utils.Utils.toMiniMessage
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.event.ClickEvent
+import net.kyori.adventure.text.event.HoverEvent
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -124,16 +126,20 @@ object PartyManager : Listener {
         return party
     }
 
+
     fun disbandParty(leader: UUID): Boolean {
         val party = parties[leader] ?: return false
 
-        party.members.forEach { memberUUID ->
-            val member = Bukkit.getPlayer(memberUUID)
-            member?.sendChat("<color:#cd3535>The party has been disbanded by the leader!")
-            memberToParty.remove(memberUUID)
-        }
+        if (party.leader != leader) return false
+
+        sendPartyChat(party, "<color:#FF5555>The party has been <color:#d45252>disbanded <color:#FF5555>by the leader!")
+
+        party.members.forEach { memberToParty.remove(it) }
 
         parties.remove(leader)
+
+        pendingInvites.entries.removeIf { it.value.party.leader == leader }
+
         return true
     }
 
@@ -145,7 +151,7 @@ object PartyManager : Listener {
             return false
         }
 
-        Bukkit.getPlayer(party.leader)?.sendChat("<color:#cd3535>${Bukkit.getPlayer(member)?.name} has left the party.")
+        Bukkit.getPlayer(party.leader)?.sendChat("<color:#d45252>${Bukkit.getPlayer(member)?.name} <color:#FF5555>has left the party.")
         party.removeMember(member)
         memberToParty.remove(member)
         return true
@@ -173,11 +179,7 @@ object PartyManager : Listener {
         party.removeMember(member)
         memberToParty.remove(member)
 
-        // Notify other party members
-        party.members.forEach { memberUUID ->
-            val partyMember = Bukkit.getPlayer(memberUUID)
-            partyMember?.sendChat("<color:#cd3535>${Bukkit.getPlayer(member)?.name} has been kicked from the party.")
-        }
+        sendPartyChat(party, "<color:#d45252>${Bukkit.getPlayer(member)?.name} <color:#FF5555>has been <color:#d45252>kicked <color:#FF5555>from the party.")
 
         return true
     }
@@ -198,8 +200,22 @@ object PartyManager : Listener {
 
         val leaderPlayer = Bukkit.getPlayer(party.leader)
         val memberPlayer = Bukkit.getPlayer(member)
-        leaderPlayer?.sendChat("<color:#35cd35>Party invite sent to <color:#77DD77>${memberPlayer?.name}!")
-        memberPlayer?.sendChat("<color:#35cd35>You have been invited to <color:#77DD77>${leaderPlayer?.name}<color:#35cd35>'s party! Use <color:#77DD77>/party accept <color:#35cd35>or <color:#77DD77>/party decline")
+        leaderPlayer?.sendChat("<color:#77DD77>Party invite sent to <color:#35cd35>${memberPlayer?.name}<color:#77DD77>!")
+
+        val builder = Component.text()
+            .append("<color:#77DD77>You have been invited to <color:#35cd35>${leaderPlayer?.name}<color:#77DD77>'s party! ".toMiniMessage()
+
+            .append("<color:#77DD77>Use <color:#35cd35>/party accept".toMiniMessage())
+                .clickEvent(ClickEvent.runCommand("/party accept")))
+                .hoverEvent(HoverEvent.showText("<color:#35cd35>Click to accept the party invite".toMiniMessage()))
+
+            .append(" <color:#77DD77>or ".toMiniMessage())
+
+            .append("<color:#FF5555>/party decline".toMiniMessage()
+                .clickEvent(ClickEvent.runCommand("/party decline"))
+                .hoverEvent(HoverEvent.showText("<color:#FF5555>Click to decline the party invite".toMiniMessage())))
+
+        memberPlayer?.sendMessage(builder.build())
 
         return true
     }
@@ -235,14 +251,21 @@ object PartyManager : Listener {
         val builder = Component.text()
         parties.values.forEach { party ->
             val leader = Bukkit.getPlayer(party.leader)
-            builder.append("\n<color:#35cd35>Party Leader: <color:#77DD77>${leader?.name}\n".toMiniMessage())
-            builder.append("<color:#35cd35>Members:\n".toMiniMessage())
+            builder.append("\n<color:#77DD77>Party Leader: <color:#35cd35>${leader?.name}\n".toMiniMessage())
+            builder.append("<color:#77DD77>Members:\n".toMiniMessage())
             party.members.forEach { memberUUID ->
                 val member = Bukkit.getPlayer(memberUUID)
-                builder.append("<white>- <color:#77DD77>${member?.name}\n".toMiniMessage())
+                builder.append("<white>- <color:#35cd35>${member?.name}\n".toMiniMessage())
             }
         }
         return builder.build()
+    }
+
+    fun sendPartyChat(party: Party, message: String) {
+        party.members
+            .filter { it != party.leader }
+            .mapNotNull { Bukkit.getPlayer(it) }
+            .forEach { it.sendChat(message) }
     }
 
     fun cleanup() {

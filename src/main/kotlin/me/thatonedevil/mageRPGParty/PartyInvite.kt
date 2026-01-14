@@ -1,6 +1,8 @@
 package me.thatonedevil.mageRPGParty
 
+import me.thatonedevil.devilLib.utils.Utils.noMessage
 import me.thatonedevil.devilLib.utils.Utils.sendChat
+import me.thatonedevil.devilLib.utils.Utils.yesMessage
 import org.bukkit.Bukkit
 import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
@@ -45,8 +47,7 @@ class PartyInvite(val party: Party, val invitedMember: UUID) {
         val member = Bukkit.getPlayer(invitedMember)
 
         // Notify players
-        member?.sendChat("<color:#35cd35>You <color:#77DD77>joined the party!")
-        leader?.sendChat("<color:#35cd35>${member?.name} <color:#77DD77>joined the party!")
+        leader?.yesMessage("<color:#35cd35>${member?.name} <color:#77DD77>joined the party!")
 
         PartyManager.removePendingInvite(invitedMember)
     }
@@ -60,8 +61,7 @@ class PartyInvite(val party: Party, val invitedMember: UUID) {
         val member = Bukkit.getPlayer(invitedMember)
 
         // Notify players
-        leader?.sendChat("<color:#cd3535>${member?.name} <color:#DD7777>declined your party invite.")
-        member?.sendChat("<color:#cd3535>You <color:#DD7777>declined the party invite.")
+        leader?.noMessage("<color:#d45252>${member?.name} <color:#FF5555>declined your party invite.")
 
         PartyManager.removePendingInvite(invitedMember)
     }
@@ -74,8 +74,8 @@ class PartyInvite(val party: Party, val invitedMember: UUID) {
         val member = Bukkit.getPlayer(invitedMember)
 
         // Notify players
-        leader?.sendChat("<color:#DD7777>Party invite to <color:#cd3535>${member?.name} has <color:#cd3535>expired.")
-        member?.sendChat("<color:#DD7777>Your party invite has <color:#cd3535>expired.")
+        leader?.noMessage("<color:#FF5555>Party invite to <color:#d45252>${member?.name} <color:#FF5555>has <color:#d45252>expired<color:#FF5555>.")
+        member?.noMessage("<color:#FF5555>Your party invite has <color:#d45252>expired<color:#FF5555>.")
 
         // Remove from pending invites
         PartyManager.removePendingInvite(invitedMember)

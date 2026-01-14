@@ -45,23 +45,15 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
 
     private fun handleCreate(player: Player) {
         if (partyManager.createParty(player.uniqueId) == null) {
-            player.noMessage("<color:#d45252>You <color:#FF5555>are already in a <color:#d45252>party!")
+            player.noMessage("<color:#FF5555>You are already in a <color:#d45252>party!")
         } else {
             player.yesMessage("<color:#77DD77>Party created <color:#35cd35>successfully!")
         }
     }
 
     private fun handleInvite(player: Player, args: Array<out String>) {
-        if (!requireInParty(player)) return
-
         if (args.size < 2) {
             player.noMessage("<color:#FF5555>Usage: <color:#d45252>/party invite <player>")
-            return
-        }
-
-        val party = partyManager.getParty(player.uniqueId)
-        if (party == null || party.leader != player.uniqueId) {
-            player.noMessage("<color:#d45252>You <color:#FF5555>are not the <color:#d45252>leader <color:#FF5555>of the party!")
             return
         }
 
@@ -72,17 +64,41 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         }
 
         if (targetPlayer.uniqueId == player.uniqueId) {
-            player.noMessage("<color:#d45252>You <color:#FF5555>cannot invite yourself!")
+            player.noMessage("<color:#FF5555>You cannot invite <color:#d45252>yourself!")
             return
         }
 
+        val party = partyManager.getParty(player.uniqueId)
+
+        // Case 1: Player is not in any party - create party and invite
+        if (party == null) {
+            val newParty = partyManager.createParty(player.uniqueId)
+            if (newParty == null) {
+                player.noMessage("<color:#FF5555>Failed to create <color:#d45252>party!")
+                return
+            }
+            player.yesMessage("<color:#77DD77>Party created <color:#35cd35>successfully!")
+
+            if (!partyManager.inviteToParty(player.uniqueId, targetPlayer.uniqueId)) {
+                player.noMessage("<color:#FF5555>Could not invite player! They may already be in a <color:#d45252>party <color:#FF5555>or have a <color:#d45252>pending invite<color:#FF5555>.")
+            }
+            return
+        }
+
+        // Case 2: Player is in a party but not the leader
+        if (party.leader != player.uniqueId) {
+            player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
+            return
+        }
+
+        // Case 3: Player is the leader - check party size and invite
         if (party.members.size >= TEAM_SIZE) {
-            player.noMessage("<color:#FF5555>Your party is full! <color:#d45252>Maximum size is $TEAM_SIZE players.")
+            player.noMessage("<color:#FF5555>Your party is <color:#d45252>full<color:#FF5555>! Maximum size is <color:#d45252>$TEAM_SIZE <color:#FF5555>players.")
             return
         }
 
         if (!partyManager.inviteToParty(player.uniqueId, targetPlayer.uniqueId)) {
-            player.noMessage("<color:#FF5555>Could not invite <color:#d45252>player! <color:#FF5555>They may already be in a <color:#d45252>party <color:#FF5555>or have a <color:#d45252>pending invite.")
+            player.noMessage("<color:#FF5555>Could not invite player! They may already be in a <color:#d45252>party <color:#FF5555>or have a <color:#d45252>pending invite<color:#FF5555>.")
         }
     }
 
@@ -92,7 +108,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         if (partyManager.acceptInvite(player.uniqueId)) {
             player.yesMessage("<color:#77DD77>Party invite accepted <color:#35cd35>successfully!")
         } else {
-            player.noMessage("<color:#FF5555>Failed to accept invite! It may have <color:#d45252>expired.")
+            player.noMessage("<color:#FF5555>Failed to accept invite! It may have <color:#d45252>expired<color:#FF5555>.")
         }
     }
 
@@ -102,7 +118,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         if (partyManager.declineInvite(player.uniqueId)) {
             player.yesMessage("<color:#77DD77>Party invite declined <color:#35cd35>successfully!")
         } else {
-            player.noMessage("<color:#FF5555>Failed to decline invite! It may have <color:#d45252>expired.")
+            player.noMessage("<color:#FF5555>Failed to decline invite! It may have <color:#d45252>expired<color:#FF5555>.")
         }
     }
 
@@ -110,9 +126,9 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         if (!requireInParty(player)) return
 
         if (partyManager.leaveParty(player.uniqueId)) {
-            player.yesMessage("<color:#35cd35>You <color:#77DD77>have left the party <color:#35cd35>successfully!")
+            player.yesMessage("<color:#77DD77>You have left the party <color:#35cd35>successfully!")
         } else {
-            player.noMessage("<color:#d45252>You <color:#FF5555>are the <color:#d45252>leader <color:#FF5555>of the party! Use <color:#d45252>/party disband <color:#FF5555>to disband the party.")
+            player.noMessage("<color:#FF5555>You are the <color:#d45252>leader <color:#FF5555>of the party! Use <color:#d45252>/party disband <color:#FF5555>to disband the party.")
         }
     }
 
@@ -126,19 +142,19 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
 
         val party = partyManager.getParty(player.uniqueId)
         if (party == null) {
-            player.noMessage("<color:#d45252>You <color:#FF5555>are not in a party!")
+            player.noMessage("<color:#FF5555>You are not in a party!")
             return
         }
 
         // Check if player is the leader
         if (party.leader != player.uniqueId) {
-            player.noMessage("<color:#d45252>You <color:#FF5555>are not the <color:#d45252>leader <color:#FF5555>of the party!")
+            player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
             return
         }
 
         // Check if party has only 2 members
         if (party.members.size <= 2) {
-            player.noMessage("<color:#d45252>Cannot kick from a 2-person party! Use <color:#FF5555>/party disband <color:#d45252>instead.")
+            player.noMessage("<color:#FF5555>Cannot kick from a <color:#d45252>2-person party<color:#FF5555>! Use <color:#d45252>/party disband <color:#FF5555>instead.")
             return
         }
 
@@ -149,7 +165,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         }
 
         if (targetPlayer.uniqueId == player.uniqueId) {
-            player.noMessage("<color:#d45252>You <color:#FF5555>cannot kick yourself! Use <color:#d45252>/party leave <color:#FF5555>instead.")
+            player.noMessage("<color:#FF5555>You cannot kick <color:#d45252>yourself<color:#FF5555>! Use <color:#d45252>/party leave <color:#FF5555>instead.")
             return
         }
 
@@ -161,7 +177,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         // Kick the player
         if (partyManager.kickFromParty(player.uniqueId, targetPlayer.uniqueId)) {
             player.yesMessage("<color:#77DD77>Successfully kicked <color:#35cd35>${targetPlayer.name} <color:#77DD77>from the party!")
-            targetPlayer.sendChat("<color:#d45252>You <color:#FF5555>have been kicked from the party!")
+            targetPlayer.sendChat("<color:#FF5555>You have been kicked from the party!")
         } else {
             player.noMessage("<color:#FF5555>Failed to kick player!")
         }
@@ -173,7 +189,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         if (partyManager.disbandParty(player.uniqueId)) {
             player.yesMessage("<color:#77DD77>Party disbanded <color:#35cd35>successfully!")
         } else {
-            player.noMessage("<color:#d45252>You <color:#FF5555>are not the <color:#d45252>leader <color:#FF5555>of the party!")
+            player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
         }
     }
 
@@ -184,7 +200,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
 
     private fun requireInParty(player: Player): Boolean {
         if (!partyManager.isInParty(player.uniqueId)) {
-            player.noMessage("<color:#d45252>You <color:#FF5555>are not in a party! Create one with /party create")
+            player.noMessage("<color:#FF5555>You are not in a party! Create one with <color:#d45252>/party create")
             return false
         }
         return true
@@ -192,14 +208,14 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
 
     private fun requirePendingInvite(player: Player): Boolean {
         if (!partyManager.hasPendingInvite(player.uniqueId)) {
-            player.noMessage("<color:#d45252>You <color:#FF5555>don't have any pending <color:#d45252>party invites!")
+            player.noMessage("<color:#FF5555>You don't have any pending <color:#d45252>party invites!")
             return false
         }
         return true
     }
 
     private fun showUsage(player: Player): Boolean {
-        player.noMessage("Usage: /party <${subcommands.joinToString(", ")}>")
+        player.noMessage("<color:#FF5555>Usage: <color:#d45252>/party <${subcommands.joinToString(", ")}>")
         return true
     }
 
