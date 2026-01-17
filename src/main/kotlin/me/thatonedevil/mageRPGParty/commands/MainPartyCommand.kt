@@ -2,7 +2,6 @@ package me.thatonedevil.mageRPGParty.commands
 
 import me.thatonedevil.devilLib.utils.Utils.noMessage
 import me.thatonedevil.devilLib.utils.Utils.yesMessage
-import me.thatonedevil.devilLib.utils.Utils.sendChat
 import me.thatonedevil.mageRPGParty.MageRPGParty.Companion.partyManager
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
@@ -25,7 +24,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         label: String,
         args: Array<out String>
     ): Boolean {
-        val player = sender as Player
+        val player = sender as? Player ?: return false
         val subcommand = args.getOrNull(0)?.lowercase() ?: return showUsage(player)
 
         when (subcommand) {
@@ -57,8 +56,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
             return
         }
 
-        val targetPlayer = Bukkit.getPlayer(args[1])
-        if (targetPlayer == null) {
+        val targetPlayer = Bukkit.getPlayer(args[1]) ?: run {
             player.noMessage("<color:#FF5555>Player not <color:#d45252>found!")
             return
         }
@@ -70,10 +68,8 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
 
         val party = partyManager.getParty(player.uniqueId)
 
-        // Case 1: Player is not in any party - create party and invite
         if (party == null) {
-            val newParty = partyManager.createParty(player.uniqueId)
-            if (newParty == null) {
+            partyManager.createParty(player.uniqueId) ?: run {
                 player.noMessage("<color:#FF5555>Failed to create <color:#d45252>party!")
                 return
             }
@@ -85,14 +81,12 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
             return
         }
 
-        // Case 2: Player is in a party but not the leader
         if (party.leader != player.uniqueId) {
             player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
             return
         }
 
-        // Case 3: Player is the leader - check party size and invite
-        if (party.members.size >= TEAM_SIZE) {
+        if (party.size >= TEAM_SIZE) {
             player.noMessage("<color:#FF5555>Your party is <color:#d45252>full<color:#FF5555>! Maximum size is <color:#d45252>$TEAM_SIZE <color:#FF5555>players.")
             return
         }
@@ -140,26 +134,23 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
             return
         }
 
-        val party = partyManager.getParty(player.uniqueId)
-        if (party == null) {
+        val party = partyManager.getParty(player.uniqueId) ?: run {
             player.noMessage("<color:#FF5555>You are not in a party!")
             return
         }
 
-        // Check if player is the leader
+        // Validation checks
         if (party.leader != player.uniqueId) {
             player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
             return
         }
 
-        // Check if party has only 2 members
-        if (party.members.size <= 2) {
+        if (party.size <= 2) {
             player.noMessage("<color:#FF5555>Cannot kick from a <color:#d45252>2-person party<color:#FF5555>! Use <color:#d45252>/party disband <color:#FF5555>instead.")
             return
         }
 
-        val targetPlayer = Bukkit.getPlayer(args[1])
-        if (targetPlayer == null) {
+        val targetPlayer = Bukkit.getPlayer(args[1]) ?: run {
             player.noMessage("<color:#FF5555>Player not <color:#d45252>found!")
             return
         }
@@ -177,7 +168,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         // Kick the player
         if (partyManager.kickFromParty(player.uniqueId, targetPlayer.uniqueId)) {
             player.yesMessage("<color:#77DD77>Successfully kicked <color:#35cd35>${targetPlayer.name} <color:#77DD77>from the party!")
-            targetPlayer.sendChat("<color:#FF5555>You have been kicked from the party!")
+            targetPlayer.noMessage("<color:#FF5555>You have been kicked from the party!")
         } else {
             player.noMessage("<color:#FF5555>Failed to kick player!")
         }
@@ -228,20 +219,27 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         return when (args.size) {
             1 -> subcommands.filter { it.startsWith(args[0].lowercase()) }
             2 -> when (args[0].lowercase()) {
-                "invite" -> Bukkit.getOnlinePlayers()
-                    .map { it.name }
-                    .filter { it.lowercase().startsWith(args[1].lowercase()) }
-                "kick" -> {
-                    val player = sender as? Player ?: return emptyList()
-                    val party = partyManager.getParty(player.uniqueId) ?: return emptyList()
-                    party.members
-                        .filter { it != player.uniqueId }
-                        .mapNotNull { Bukkit.getPlayer(it)?.name }
-                        .filter { it.lowercase().startsWith(args[1].lowercase()) }
-                }
+                "invite" -> getOnlinePlayerNames(args[1])
+                "kick" -> getPartyMemberNames(sender as? Player, args[1])
                 else -> emptyList()
             }
             else -> emptyList()
         }
+    }
+
+    private fun getOnlinePlayerNames(prefix: String): List<String> {
+        return Bukkit.getOnlinePlayers()
+            .map { it.name }
+            .filter { it.lowercase().startsWith(prefix.lowercase()) }
+    }
+
+    private fun getPartyMemberNames(player: Player?, prefix: String): List<String> {
+        player ?: return emptyList()
+        val party = partyManager.getParty(player.uniqueId) ?: return emptyList()
+
+        return party.members
+            .filter { it != player.uniqueId }
+            .mapNotNull { Bukkit.getPlayer(it)?.name }
+            .filter { it.lowercase().startsWith(prefix.lowercase()) }
     }
 }

@@ -1,7 +1,6 @@
 package me.thatonedevil.mageRPGParty
 
 import me.thatonedevil.devilLib.utils.Utils.noMessage
-import me.thatonedevil.devilLib.utils.Utils.sendChat
 import me.thatonedevil.devilLib.utils.Utils.yesMessage
 import org.bukkit.Bukkit
 import org.bukkit.scheduler.BukkitTask
@@ -46,7 +45,6 @@ class PartyInvite(val party: Party, val invitedMember: UUID) {
         val leader = Bukkit.getPlayer(party.leader)
         val member = Bukkit.getPlayer(invitedMember)
 
-        // Notify players
         leader?.yesMessage("<color:#35cd35>${member?.name} <color:#77DD77>joined the party!")
 
         PartyManager.removePendingInvite(invitedMember)
@@ -60,7 +58,6 @@ class PartyInvite(val party: Party, val invitedMember: UUID) {
         val leader = Bukkit.getPlayer(party.leader)
         val member = Bukkit.getPlayer(invitedMember)
 
-        // Notify players
         leader?.noMessage("<color:#d45252>${member?.name} <color:#FF5555>declined your party invite.")
 
         PartyManager.removePendingInvite(invitedMember)
@@ -73,11 +70,9 @@ class PartyInvite(val party: Party, val invitedMember: UUID) {
         val leader = Bukkit.getPlayer(party.leader)
         val member = Bukkit.getPlayer(invitedMember)
 
-        // Notify players
         leader?.noMessage("<color:#FF5555>Party invite to <color:#d45252>${member?.name} <color:#FF5555>has <color:#d45252>expired<color:#FF5555>.")
         member?.noMessage("<color:#FF5555>Your party invite has <color:#d45252>expired<color:#FF5555>.")
 
-        // Remove from pending invites
         PartyManager.removePendingInvite(invitedMember)
     }
 

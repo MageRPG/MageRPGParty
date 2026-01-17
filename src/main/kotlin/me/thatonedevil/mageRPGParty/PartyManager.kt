@@ -1,7 +1,8 @@
 package me.thatonedevil.mageRPGParty
 
-import me.thatonedevil.devilLib.utils.Utils.sendChat
+import me.thatonedevil.devilLib.utils.Utils.noMessage
 import me.thatonedevil.devilLib.utils.Utils.toMiniMessage
+import me.thatonedevil.devilLib.utils.Utils.yesMessage
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.event.HoverEvent
@@ -19,19 +20,18 @@ data class Party(
     val id: UUID,
     val leader: UUID = id,
     val members: MutableList<UUID> = mutableListOf(leader)
-){
-    fun isMember(uuid: UUID): Boolean {
-        return members.contains(uuid)
-    }
+) {
+    fun isMember(uuid: UUID): Boolean = members.contains(uuid)
+
     fun addMember(uuid: UUID): Boolean {
         if (isMember(uuid)) return false
         members.add(uuid)
         return true
     }
-    fun removeMember(uuid: UUID): Boolean {
-        members.remove(uuid)
-        return true
-    }
+
+    fun removeMember(uuid: UUID): Boolean = members.remove(uuid)
+
+    val size: Int get() = members.size
 }
 
 object PartyManager : Listener {
@@ -42,39 +42,29 @@ object PartyManager : Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     fun onPlayerQuit(event: PlayerQuitEvent) {
-        val player = event.player
-        val uuid = player.uniqueId
+        val uuid = event.player.uniqueId
 
-        // Remove pending invite if they have one
         removePendingInvite(uuid)
 
-        // Check if they're in a party
-        if (!isInParty(uuid)) return
+        val party = getParty(uuid) ?: return
 
-        val leaderUUID = memberToParty[uuid]
-        val party = parties[leaderUUID] ?: return
-
-        // If the player is the leader, disband the party
         if (party.leader == uuid) {
             disbandParty(uuid)
         } else {
-            // If they're a member, remove them from the party
             leaveParty(uuid)
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     fun onPlayerDamageEvent(event: EntityDamageByEntityEvent) {
-        val victim = event.entity
-        val attacker = event.damager
-        if (victim !is Player) return
-        if (attacker !is Player) return
+        val victim = event.entity as? Player ?: return
+        val attacker = event.damager as? Player ?: return
 
         val victimParty = getParty(victim.uniqueId) ?: return
+
         if (victimParty.isMember(attacker.uniqueId)) {
             event.isCancelled = true
         }
-
     }
 
     @EventHandler
@@ -86,24 +76,16 @@ object PartyManager : Listener {
 
         val party = getParty(inviter.uniqueId) ?: return
 
-        if (party.leader != inviter.uniqueId) {
-            return
-        }
-
+        if (party.leader != inviter.uniqueId) return
         if (party.isMember(clicked.uniqueId)) return
         if (isInParty(clicked.uniqueId)) return
 
         inviteToParty(party.leader, clicked.uniqueId)
     }
 
+    fun isInParty(uuid: UUID): Boolean = memberToParty.containsKey(uuid)
 
-    fun isInParty(uuid: UUID): Boolean {
-        return memberToParty.containsKey(uuid)
-    }
-
-    fun hasPendingInvite(uuid: UUID): Boolean {
-        return pendingInvites.containsKey(uuid)
-    }
+    fun hasPendingInvite(uuid: UUID): Boolean = pendingInvites.containsKey(uuid)
 
     fun getParty(uuid: UUID): Party? {
         val leaderUUID = memberToParty[uuid] ?: return null
@@ -111,14 +93,11 @@ object PartyManager : Listener {
     }
 
     fun removePendingInvite(uuid: UUID) {
-        pendingInvites[uuid]?.cancel()
-        pendingInvites.remove(uuid)
+        pendingInvites.remove(uuid)?.cancel()
     }
 
     fun createParty(leader: UUID): Party? {
-        if (memberToParty.containsKey(leader)) {
-            return null
-        }
+        if (isInParty(leader)) return null
 
         val party = Party(id = leader)
         parties[leader] = party
@@ -126,60 +105,48 @@ object PartyManager : Listener {
         return party
     }
 
-
     fun disbandParty(leader: UUID): Boolean {
         val party = parties[leader] ?: return false
-
         if (party.leader != leader) return false
 
-        sendPartyChat(party, "<color:#FF5555>The party has been <color:#d45252>disbanded <color:#FF5555>by the leader!")
+        sendPartyNoChat(party, "<color:#FF5555>The party has been <color:#d45252>disbanded <color:#FF5555>by the leader!")
 
         party.members.forEach { memberToParty.remove(it) }
-
         parties.remove(leader)
 
+        // Clean up any pending invites for this party
         pendingInvites.entries.removeIf { it.value.party.leader == leader }
 
         return true
     }
 
     fun leaveParty(member: UUID): Boolean {
-        val leaderUUID = memberToParty[member] ?: return false
-        val party = parties[leaderUUID] ?: return false
+        val party = getParty(member) ?: return false
+        if (party.leader == member) return false
 
-        if (party.leader == member) {
-            return false
-        }
+        val memberName = Bukkit.getPlayer(member)?.name ?: "Unknown"
+        Bukkit.getPlayer(party.leader)?.noMessage("<color:#d45252>$memberName <color:#FF5555>has left the party.")
 
-        Bukkit.getPlayer(party.leader)?.sendChat("<color:#d45252>${Bukkit.getPlayer(member)?.name} <color:#FF5555>has left the party.")
         party.removeMember(member)
         memberToParty.remove(member)
+
         return true
     }
 
     fun kickFromParty(leader: UUID, member: UUID): Boolean {
         val party = parties[leader] ?: return false
 
-        // Only the leader can kick
-        if (party.leader != leader) {
-            return false
-        }
+        // Validation checks
+        if (party.leader != leader) return false
+        if (leader == member) return false
+        if (!party.isMember(member)) return false
 
-        // Cannot kick yourself
-        if (leader == member) {
-            return false
-        }
+        val memberName = Bukkit.getPlayer(member)?.name ?: "Unknown"
 
-        // Check if the member is in the party
-        if (!party.isMember(member)) {
-            return false
-        }
-
-        // Remove the member
         party.removeMember(member)
         memberToParty.remove(member)
 
-        sendPartyChat(party, "<color:#d45252>${Bukkit.getPlayer(member)?.name} <color:#FF5555>has been <color:#d45252>kicked <color:#FF5555>from the party.")
+        sendPartyNoChat(party, "<color:#d45252>$memberName <color:#FF5555>has been <color:#d45252>kicked <color:#FF5555>from the party.")
 
         return true
     }
@@ -187,35 +154,34 @@ object PartyManager : Listener {
     fun inviteToParty(leader: UUID, member: UUID): Boolean {
         val party = parties[leader] ?: return false
 
-        if (isInParty(member)) {
-            return false
-        }
-
-        if (hasPendingInvite(member)) {
-            return false
-        }
+        // Validation checks
+        if (isInParty(member)) return false
+        if (hasPendingInvite(member)) return false
 
         val invite = PartyInvite(party, member)
         pendingInvites[member] = invite
 
         val leaderPlayer = Bukkit.getPlayer(party.leader)
         val memberPlayer = Bukkit.getPlayer(member)
-        leaderPlayer?.sendChat("<color:#77DD77>Party invite sent to <color:#35cd35>${memberPlayer?.name}<color:#77DD77>!")
 
-        val builder = Component.text()
-            .append("<color:#77DD77>You have been invited to <color:#35cd35>${leaderPlayer?.name}<color:#77DD77>'s party! ".toMiniMessage()
+        leaderPlayer?.yesMessage("<color:#77DD77>Party invite sent to <color:#35cd35>${memberPlayer?.name}<color:#77DD77>!")
 
-            .append("<color:#77DD77>Use <color:#35cd35>/party accept".toMiniMessage())
-                .clickEvent(ClickEvent.runCommand("/party accept")))
-                .hoverEvent(HoverEvent.showText("<color:#35cd35>Click to accept the party invite".toMiniMessage()))
-
+        val inviteMessage = Component.text()
+            .append("<color:#77DD77>You have been invited to <color:#35cd35>${leaderPlayer?.name}<color:#77DD77>'s party! ".toMiniMessage())
+            .append(
+                "<color:#35cd35>/party accept".toMiniMessage()
+                    .clickEvent(ClickEvent.runCommand("/party accept"))
+                    .hoverEvent(HoverEvent.showText("<color:#35cd35>Click to accept the party invite".toMiniMessage()))
+            )
             .append(" <color:#77DD77>or ".toMiniMessage())
+            .append(
+                "<color:#FF5555>/party decline".toMiniMessage()
+                    .clickEvent(ClickEvent.runCommand("/party decline"))
+                    .hoverEvent(HoverEvent.showText("<color:#FF5555>Click to decline the party invite".toMiniMessage()))
+            )
+            .build()
 
-            .append("<color:#FF5555>/party decline".toMiniMessage()
-                .clickEvent(ClickEvent.runCommand("/party decline"))
-                .hoverEvent(HoverEvent.showText("<color:#FF5555>Click to decline the party invite".toMiniMessage())))
-
-        memberPlayer?.sendMessage(builder.build())
+        memberPlayer?.sendMessage(inviteMessage)
 
         return true
     }
@@ -231,6 +197,7 @@ object PartyManager : Listener {
         invite.accept()
         memberToParty[member] = invite.party.leader
         removePendingInvite(member)
+
         return true
     }
 
@@ -244,38 +211,38 @@ object PartyManager : Listener {
 
         invite.decline()
         removePendingInvite(member)
+
         return true
     }
 
     fun partyInfo(): Component {
         val builder = Component.text()
+
         parties.values.forEach { party ->
             val leader = Bukkit.getPlayer(party.leader)
+
             builder.append("\n<color:#77DD77>Party Leader: <color:#35cd35>${leader?.name}\n".toMiniMessage())
             builder.append("<color:#77DD77>Members:\n".toMiniMessage())
+
             party.members.forEach { memberUUID ->
                 val member = Bukkit.getPlayer(memberUUID)
                 builder.append("<white>- <color:#35cd35>${member?.name}\n".toMiniMessage())
             }
         }
+
         return builder.build()
     }
 
-    fun sendPartyChat(party: Party, message: String) {
+    private fun sendPartyNoChat(party: Party, message: String) {
         party.members
             .filter { it != party.leader }
             .mapNotNull { Bukkit.getPlayer(it) }
-            .forEach { it.sendChat(message) }
+            .forEach { it.noMessage(message) }
     }
 
     fun cleanup() {
-        // Cancel all pending invites
-        pendingInvites.values.forEach { invite ->
-            invite.cancel()
-        }
+        pendingInvites.values.forEach { it.cancel() }
         pendingInvites.clear()
-
-        // Clear all party data
         parties.clear()
         memberToParty.clear()
     }

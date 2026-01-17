@@ -26,10 +26,8 @@ class MageRPGParty : JavaPlugin() {
             PartyPlaceholder().register()
         }
 
-        // Register commands
         registerCommands()
 
-        // Register listeners
         registerListeners()
 
     }
