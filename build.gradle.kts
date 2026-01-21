@@ -8,6 +8,7 @@ group = "me.thatonedevil"
 version = "1.0"
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/") {
         name = "papermc-repo"
@@ -15,16 +16,13 @@ repositories {
     maven("https://repo.extendedclip.com/content/repositories/placeholderapi/"){
         name = "placeholderapi-repo"
     }
-    flatDir {
-        dirs("C:\\Users\\neevp\\IdeaProjects\\DevilLib\\build\\libs")
-    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.7")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("me.thatonedevil.devilLib:DevilLib-1.0-all")
+    implementation("me.thatonedevil:DevilLib:1.0")
 }
 
 tasks {
