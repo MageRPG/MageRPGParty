@@ -4,7 +4,7 @@ main: me.thatonedevil.mageRPGParty.MageRPGParty
 api-version: '1.21'
 website: https://thatonedevil.github.io/
 author: ThatOneDevil
-depend: [PlaceholderAPI]
+depend: [DevilLib, PlaceholderAPI]
 commands:
   party:
     description: Main command for party management.

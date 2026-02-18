@@ -1,4 +1,4 @@
-package me.thatonedevil.mageRPGParty
+package me.thatonedevil.mageRPGParty.party
 
 import me.thatonedevil.devilLib.utils.Utils.noMessage
 import me.thatonedevil.devilLib.utils.Utils.toMiniMessage
@@ -215,19 +215,17 @@ object PartyManager : Listener {
         return true
     }
 
-    fun partyInfo(): Component {
+    fun partyInfo(playerUUID: UUID): Component {
         val builder = Component.text()
+        val party = getParty(playerUUID) ?: return "<color:#FF5555>You are not in a party!".toMiniMessage()
 
-        parties.values.forEach { party ->
-            val leader = Bukkit.getPlayer(party.leader)
+        val leader = Bukkit.getPlayer(party.leader)
+        builder.append("<color:#77DD77>Party Leader: <color:#35cd35>${leader?.name}\n".toMiniMessage())
+        builder.append("<color:#77DD77>Members:\n".toMiniMessage())
 
-            builder.append("\n<color:#77DD77>Party Leader: <color:#35cd35>${leader?.name}\n".toMiniMessage())
-            builder.append("<color:#77DD77>Members:\n".toMiniMessage())
-
-            party.members.forEach { memberUUID ->
-                val member = Bukkit.getPlayer(memberUUID)
-                builder.append("<white>- <color:#35cd35>${member?.name}\n".toMiniMessage())
-            }
+        party.members.forEach { memberUUID ->
+            val member = Bukkit.getPlayer(memberUUID)
+            builder.append("<white>- <color:#35cd35>${member?.name}\n".toMiniMessage())
         }
 
         return builder.build()

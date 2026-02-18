@@ -119,10 +119,18 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
     private fun handleLeave(player: Player) {
         if (!requireInParty(player)) return
 
-        if (partyManager.leaveParty(player.uniqueId)) {
-            player.yesMessage("<color:#77DD77>You have left the party <color:#35cd35>successfully!")
+        val party = partyManager.getParty(player.uniqueId) ?: return
+
+        if (party.leader == player.uniqueId) {
+            // Automatically disband if leader leaves
+            if (partyManager.disbandParty(player.uniqueId)) {
+                player.yesMessage("<color:#77DD77>You have disbanded the party.")
+            }
         } else {
-            player.noMessage("<color:#FF5555>You are the <color:#d45252>leader <color:#FF5555>of the party! Use <color:#d45252>/party disband <color:#FF5555>to disband the party.")
+            // Regular member leaving
+            if (partyManager.leaveParty(player.uniqueId)) {
+                player.yesMessage("<color:#77DD77>You have left the party <color:#35cd35>successfully!")
+            }
         }
     }
 
@@ -186,7 +194,7 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
 
     private fun handleInfo(player: Player) {
         if (!requireInParty(player)) return
-        player.sendMessage(partyManager.partyInfo())
+        player.sendMessage(partyManager.partyInfo(player.uniqueId))
     }
 
     private fun requireInParty(player: Player): Boolean {

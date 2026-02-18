@@ -1,7 +1,8 @@
-package me.thatonedevil.mageRPGParty
+package me.thatonedevil.mageRPGParty.party
 
 import me.thatonedevil.devilLib.utils.Utils.noMessage
 import me.thatonedevil.devilLib.utils.Utils.yesMessage
+import me.thatonedevil.mageRPGParty.MageRPGParty
 import org.bukkit.Bukkit
 import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
@@ -25,7 +26,7 @@ class PartyInvite(val party: Party, val invitedMember: UUID) {
 
     private fun startExpirationTimer() {
         expirationTask = Bukkit.getScheduler().runTaskLater(
-            MageRPGParty.instance,
+            MageRPGParty.Companion.instance,
             Runnable {
                 if (status == InviteStatus.PENDING) {
                     expire()

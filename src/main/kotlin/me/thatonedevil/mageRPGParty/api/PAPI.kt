@@ -1,7 +1,9 @@
-package me.thatonedevil.mageRPGParty
+package me.thatonedevil.mageRPGParty.api
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion
 import me.thatonedevil.mageRPGParty.MageRPGParty.Companion.partyManager
+import me.thatonedevil.mageRPGParty.party.Party
+import me.thatonedevil.mageRPGParty.party.PartyManager
 import org.bukkit.Bukkit
 import org.bukkit.OfflinePlayer
 import org.bukkit.entity.Player
@@ -64,8 +66,8 @@ class PartyPlaceholder : PlaceholderExpansion() {
 fun PartyManager.getPartyByMember(memberUUID: UUID): Party? {
     val memberToPartyMap = this::class.java.getDeclaredField("memberToParty")
         .apply { isAccessible = true }
-        .get(this) as MutableMap<UUID, UUID>
+        .get(this) as MutableMap<*, *>
 
     val leaderUUID = memberToPartyMap[memberUUID] ?: return null
-    return getParty(leaderUUID)
+    return getParty(leaderUUID as UUID)
 }

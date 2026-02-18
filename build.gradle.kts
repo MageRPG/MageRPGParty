@@ -21,13 +21,17 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.7")
+    compileOnly("me.thatonedevil:DevilLib:1.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("me.thatonedevil:DevilLib:1.0")
 }
 
 tasks {
     runServer {
         minecraftVersion("1.21.11")
+        downloadPlugins {
+            modrinth("placeholderapi", "2.12.2")
+        }
+
     }
 }
 
