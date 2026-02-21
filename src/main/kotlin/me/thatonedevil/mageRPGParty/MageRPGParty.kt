@@ -1,7 +1,8 @@
 package me.thatonedevil.mageRPGParty
 
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import me.thatonedevil.devilLib.DevilLib
-import me.thatonedevil.mageRPGParty.api.PartyAPI
+import me.thatonedevil.mageRPGParty.api.party.PartyAPI
 import me.thatonedevil.mageRPGParty.api.PartyPlaceholder
 import me.thatonedevil.mageRPGParty.commands.MainPartyCommand
 import me.thatonedevil.mageRPGParty.party.PartyManager
@@ -36,7 +37,9 @@ class MageRPGParty : JavaPlugin() {
     }
 
     private fun registerCommands() {
-        getCommand("party")?.setExecutor(MainPartyCommand())
+        lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
+            MainPartyCommand.register(event.registrar())
+        }
     }
 
     private fun registerListeners() {

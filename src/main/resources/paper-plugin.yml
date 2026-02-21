@@ -1,0 +1,16 @@
+name: MageRPGParty
+version: '1.0'
+main: me.thatonedevil.mageRPGParty.MageRPGParty
+api-version: '1.21'
+description: MageRPG's a party management plugin
+website: https://thatonedevil.github.io/
+author: ThatOneDevil
+load: STARTUP
+dependencies:
+  server:
+    DevilLib:
+      load: BEFORE
+      required: true
+    PlaceholderAPI:
+      load: AFTER
+      required: true

@@ -30,6 +30,7 @@ tasks {
         minecraftVersion("1.21.11")
         downloadPlugins {
             modrinth("placeholderapi", "2.12.2")
+            modrinth("plugmanx", "3.0.3")
         }
 
     }

@@ -1,69 +1,72 @@
 package me.thatonedevil.mageRPGParty.commands
 
+import com.mojang.brigadier.Command
+import com.mojang.brigadier.context.CommandContext
+import io.papermc.paper.command.brigadier.CommandSourceStack
+import io.papermc.paper.command.brigadier.Commands
+import io.papermc.paper.command.brigadier.argument.ArgumentTypes
+import io.papermc.paper.command.brigadier.argument.resolvers.selector.PlayerSelectorArgumentResolver
 import me.thatonedevil.devilLib.utils.Utils.noMessage
 import me.thatonedevil.devilLib.utils.Utils.yesMessage
 import me.thatonedevil.mageRPGParty.MageRPGParty.Companion.partyManager
-import org.bukkit.Bukkit
-import org.bukkit.command.Command
-import org.bukkit.command.CommandExecutor
-import org.bukkit.command.CommandSender
-import org.bukkit.command.TabCompleter
 import org.bukkit.entity.Player
 
-class MainPartyCommand : CommandExecutor, TabCompleter {
+object MainPartyCommand {
 
-    companion object {
-        const val TEAM_SIZE = 6
+    const val TEAM_SIZE = 6
+
+    fun register(commands: Commands) {
+        commands.register(
+            Commands.literal("party")
+                .requires { it.sender is Player }
+                .then(Commands.literal("create").executes { create(it) })
+                .then(
+                    Commands.literal("invite")
+                        .then(
+                            Commands.argument("player", ArgumentTypes.player())
+                                .executes { invite(it) }
+                        )
+                )
+                .then(Commands.literal("accept").executes { accept(it) })
+                .then(Commands.literal("decline").executes { decline(it) })
+                .then(Commands.literal("leave").executes { leave(it) })
+                .then(
+                    Commands.literal("kick")
+                        .then(
+                            Commands.argument("player", ArgumentTypes.player())
+                                .executes { kick(it) }
+                        )
+                )
+                .then(Commands.literal("disband").executes { disband(it) })
+                .then(Commands.literal("info").executes { info(it) })
+                .build()
+        )
     }
 
-    private val subcommands = listOf("create", "invite", "accept", "decline", "leave", "kick", "disband", "info")
+    private fun create(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.sender as Player
 
-    override fun onCommand(
-        sender: CommandSender,
-        command: Command,
-        label: String,
-        args: Array<out String>
-    ): Boolean {
-        val player = sender as? Player ?: return false
-        val subcommand = args.getOrNull(0)?.lowercase() ?: return showUsage(player)
-
-        when (subcommand) {
-            "create" -> handleCreate(player)
-            "invite" -> handleInvite(player, args)
-            "accept" -> handleAccept(player)
-            "decline" -> handleDecline(player)
-            "leave" -> handleLeave(player)
-            "kick" -> handleKick(player, args)
-            "disband" -> handleDisband(player)
-            "info" -> handleInfo(player)
-            else -> showUsage(player)
-        }
-
-        return true
-    }
-
-    private fun handleCreate(player: Player) {
         if (partyManager.createParty(player.uniqueId) == null) {
             player.noMessage("<color:#FF5555>You are already in a <color:#d45252>party!")
-        } else {
-            player.yesMessage("<color:#77DD77>Party created <color:#35cd35>successfully!")
+            return 0
         }
+
+        player.yesMessage("<color:#77DD77>Party created <color:#35cd35>successfully!")
+        return Command.SINGLE_SUCCESS
     }
 
-    private fun handleInvite(player: Player, args: Array<out String>) {
-        if (args.size < 2) {
-            player.noMessage("<color:#FF5555>Usage: <color:#d45252>/party invite <player>")
-            return
-        }
-
-        val targetPlayer = Bukkit.getPlayer(args[1]) ?: run {
+    private fun invite(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.sender as Player
+        val target = ctx.getArgument("player", PlayerSelectorArgumentResolver::class.java)
+            .resolve(ctx.source)
+            .firstOrNull() ?: run {
             player.noMessage("<color:#FF5555>Player not <color:#d45252>found!")
-            return
+            return 0
         }
 
-        if (targetPlayer.uniqueId == player.uniqueId) {
+        if (target.uniqueId == player.uniqueId) {
             player.noMessage("<color:#FF5555>You cannot invite <color:#d45252>yourself!")
-            return
+            return 0
         }
 
         val party = partyManager.getParty(player.uniqueId)
@@ -71,130 +74,141 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
         if (party == null) {
             partyManager.createParty(player.uniqueId) ?: run {
                 player.noMessage("<color:#FF5555>Failed to create <color:#d45252>party!")
-                return
+                return 0
             }
             player.yesMessage("<color:#77DD77>Party created <color:#35cd35>successfully!")
 
-            if (!partyManager.inviteToParty(player.uniqueId, targetPlayer.uniqueId)) {
+            if (!partyManager.inviteToParty(player.uniqueId, target.uniqueId)) {
                 player.noMessage("<color:#FF5555>Could not invite player! They may already be in a <color:#d45252>party <color:#FF5555>or have a <color:#d45252>pending invite<color:#FF5555>.")
+                return 0
             }
-            return
+
+            return Command.SINGLE_SUCCESS
         }
 
         if (party.leader != player.uniqueId) {
             player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
-            return
+            return 0
         }
 
         if (party.size >= TEAM_SIZE) {
             player.noMessage("<color:#FF5555>Your party is <color:#d45252>full<color:#FF5555>! Maximum size is <color:#d45252>$TEAM_SIZE <color:#FF5555>players.")
-            return
+            return 0
         }
 
-        if (!partyManager.inviteToParty(player.uniqueId, targetPlayer.uniqueId)) {
+        if (!partyManager.inviteToParty(player.uniqueId, target.uniqueId)) {
             player.noMessage("<color:#FF5555>Could not invite player! They may already be in a <color:#d45252>party <color:#FF5555>or have a <color:#d45252>pending invite<color:#FF5555>.")
+            return 0
         }
+
+        return Command.SINGLE_SUCCESS
     }
 
-    private fun handleAccept(player: Player) {
-        if (!requirePendingInvite(player)) return
+    private fun accept(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.sender as Player
+        if (!requirePendingInvite(player)) return 0
 
-        if (partyManager.acceptInvite(player.uniqueId)) {
-            player.yesMessage("<color:#77DD77>Party invite accepted <color:#35cd35>successfully!")
-        } else {
+        if (!partyManager.acceptInvite(player.uniqueId)) {
             player.noMessage("<color:#FF5555>Failed to accept invite! It may have <color:#d45252>expired<color:#FF5555>.")
+            return 0
         }
+
+        player.yesMessage("<color:#77DD77>Party invite accepted <color:#35cd35>successfully!")
+        return Command.SINGLE_SUCCESS
     }
 
-    private fun handleDecline(player: Player) {
-        if (!requirePendingInvite(player)) return
+    private fun decline(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.sender as Player
+        if (!requirePendingInvite(player)) return 0
 
-        if (partyManager.declineInvite(player.uniqueId)) {
-            player.yesMessage("<color:#77DD77>Party invite declined <color:#35cd35>successfully!")
-        } else {
+        if (!partyManager.declineInvite(player.uniqueId)) {
             player.noMessage("<color:#FF5555>Failed to decline invite! It may have <color:#d45252>expired<color:#FF5555>.")
+            return 0
         }
+
+        player.yesMessage("<color:#77DD77>Party invite declined <color:#35cd35>successfully!")
+        return Command.SINGLE_SUCCESS
     }
 
-    private fun handleLeave(player: Player) {
-        if (!requireInParty(player)) return
+    private fun leave(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.sender as Player
+        if (!requireInParty(player)) return 0
 
-        val party = partyManager.getParty(player.uniqueId) ?: return
+        val party = partyManager.getParty(player.uniqueId) ?: return 0
 
         if (party.leader == player.uniqueId) {
-            // Automatically disband if leader leaves
-            if (partyManager.disbandParty(player.uniqueId)) {
-                player.yesMessage("<color:#77DD77>You have disbanded the party.")
-            }
+            if (!partyManager.disbandParty(player.uniqueId)) return 0
+            player.yesMessage("<color:#77DD77>You have disbanded the party.")
         } else {
-            // Regular member leaving
-            if (partyManager.leaveParty(player.uniqueId)) {
-                player.yesMessage("<color:#77DD77>You have left the party <color:#35cd35>successfully!")
-            }
+            if (!partyManager.leaveParty(player.uniqueId)) return 0
+            player.yesMessage("<color:#77DD77>You have left the party <color:#35cd35>successfully!")
         }
+
+        return Command.SINGLE_SUCCESS
     }
 
-    private fun handleKick(player: Player, args: Array<out String>) {
-        if (!requireInParty(player)) return
+    private fun kick(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.sender as Player
+        if (!requireInParty(player)) return 0
 
-        if (args.size < 2) {
-            player.noMessage("<color:#FF5555>Usage: <color:#d45252>/party kick <player>")
-            return
-        }
+        val party = partyManager.getParty(player.uniqueId) ?: return 0
 
-        val party = partyManager.getParty(player.uniqueId) ?: run {
-            player.noMessage("<color:#FF5555>You are not in a party!")
-            return
-        }
-
-        // Validation checks
         if (party.leader != player.uniqueId) {
             player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
-            return
+            return 0
         }
 
         if (party.size <= 2) {
             player.noMessage("<color:#FF5555>Cannot kick from a <color:#d45252>2-person party<color:#FF5555>! Use <color:#d45252>/party disband <color:#FF5555>instead.")
-            return
+            return 0
         }
 
-        val targetPlayer = Bukkit.getPlayer(args[1]) ?: run {
+        val target = ctx.getArgument("player", PlayerSelectorArgumentResolver::class.java)
+            .resolve(ctx.source)
+            .firstOrNull() ?: run {
             player.noMessage("<color:#FF5555>Player not <color:#d45252>found!")
-            return
+            return 0
         }
 
-        if (targetPlayer.uniqueId == player.uniqueId) {
+        if (target.uniqueId == player.uniqueId) {
             player.noMessage("<color:#FF5555>You cannot kick <color:#d45252>yourself<color:#FF5555>! Use <color:#d45252>/party leave <color:#FF5555>instead.")
-            return
+            return 0
         }
 
-        if (!party.isMember(targetPlayer.uniqueId)) {
+        if (!party.isMember(target.uniqueId)) {
             player.noMessage("<color:#FF5555>That player is not in your party!")
-            return
+            return 0
         }
 
-        // Kick the player
-        if (partyManager.kickFromParty(player.uniqueId, targetPlayer.uniqueId)) {
-            player.yesMessage("<color:#77DD77>Successfully kicked <color:#35cd35>${targetPlayer.name} <color:#77DD77>from the party!")
-            targetPlayer.noMessage("<color:#FF5555>You have been kicked from the party!")
-        } else {
+        if (!partyManager.kickFromParty(player.uniqueId, target.uniqueId)) {
             player.noMessage("<color:#FF5555>Failed to kick player!")
+            return 0
         }
+
+        player.yesMessage("<color:#77DD77>Successfully kicked <color:#35cd35>${target.name} <color:#77DD77>from the party!")
+        target.noMessage("<color:#FF5555>You have been kicked from the party!")
+        return Command.SINGLE_SUCCESS
     }
 
-    private fun handleDisband(player: Player) {
-        if (!requireInParty(player)) return
+    private fun disband(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.sender as Player
+        if (!requireInParty(player)) return 0
 
-        if (partyManager.disbandParty(player.uniqueId)) {
-            player.yesMessage("<color:#77DD77>Party disbanded <color:#35cd35>successfully!")
-        } else {
+        if (!partyManager.disbandParty(player.uniqueId)) {
             player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
+            return 0
         }
+
+        player.yesMessage("<color:#77DD77>Party disbanded <color:#35cd35>successfully!")
+        return Command.SINGLE_SUCCESS
     }
 
-    private fun handleInfo(player: Player) {
-        if (!requireInParty(player)) return
+    private fun info(ctx: CommandContext<CommandSourceStack>): Int {
+        val player = ctx.source.sender as Player
+        if (!requireInParty(player)) return 0
+
         player.sendMessage(partyManager.partyInfo(player.uniqueId))
+        return Command.SINGLE_SUCCESS
     }
 
     private fun requireInParty(player: Player): Boolean {
@@ -211,43 +225,5 @@ class MainPartyCommand : CommandExecutor, TabCompleter {
             return false
         }
         return true
-    }
-
-    private fun showUsage(player: Player): Boolean {
-        player.noMessage("<color:#FF5555>Usage: <color:#d45252>/party <${subcommands.joinToString(", ")}>")
-        return true
-    }
-
-    override fun onTabComplete(
-        sender: CommandSender,
-        command: Command,
-        label: String,
-        args: Array<out String>
-    ): List<String> {
-        return when (args.size) {
-            1 -> subcommands.filter { it.startsWith(args[0].lowercase()) }
-            2 -> when (args[0].lowercase()) {
-                "invite" -> getOnlinePlayerNames(args[1])
-                "kick" -> getPartyMemberNames(sender as? Player, args[1])
-                else -> emptyList()
-            }
-            else -> emptyList()
-        }
-    }
-
-    private fun getOnlinePlayerNames(prefix: String): List<String> {
-        return Bukkit.getOnlinePlayers()
-            .map { it.name }
-            .filter { it.lowercase().startsWith(prefix.lowercase()) }
-    }
-
-    private fun getPartyMemberNames(player: Player?, prefix: String): List<String> {
-        player ?: return emptyList()
-        val party = partyManager.getParty(player.uniqueId) ?: return emptyList()
-
-        return party.members
-            .filter { it != player.uniqueId }
-            .mapNotNull { Bukkit.getPlayer(it)?.name }
-            .filter { it.lowercase().startsWith(prefix.lowercase()) }
     }
 }

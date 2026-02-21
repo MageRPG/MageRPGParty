@@ -1,10 +1,9 @@
-package me.thatonedevil.mageRPGParty.api
+package me.thatonedevil.mageRPGParty.api.party
 
 import me.thatonedevil.devilLib.bridge.DevilExport
 import me.thatonedevil.mageRPGParty.party.Party
 import me.thatonedevil.mageRPGParty.party.PartyManager
 import java.util.UUID
-
 
 class PartyAPI {
 
@@ -13,8 +12,7 @@ class PartyAPI {
         return PartyManager.getParty(uuid)
     }
 
-    @DevilExport(name = "isInParty") // explicit name
-    fun isInParty(uuid: UUID): Boolean {
-        return PartyManager.getParty(uuid) != null
-    }
+    @DevilExport
+    fun isInParty(uuid: UUID) = PartyManager.getParty(uuid) != null
 }
+
