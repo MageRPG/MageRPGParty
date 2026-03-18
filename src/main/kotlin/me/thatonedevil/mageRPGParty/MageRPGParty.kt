@@ -37,9 +37,7 @@ class MageRPGParty : JavaPlugin() {
     }
 
     private fun registerCommands() {
-        lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
-            MainPartyCommand.register(event.registrar())
-        }
+        MainPartyCommand().register(this)
     }
 
     private fun registerListeners() {
