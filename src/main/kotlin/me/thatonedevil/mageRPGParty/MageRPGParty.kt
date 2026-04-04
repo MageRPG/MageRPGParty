@@ -1,6 +1,5 @@
 package me.thatonedevil.mageRPGParty
 
-import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents
 import me.thatonedevil.devilLib.DevilLib
 import me.thatonedevil.mageRPGParty.api.party.PartyAPI
 import me.thatonedevil.mageRPGParty.api.PartyPlaceholder

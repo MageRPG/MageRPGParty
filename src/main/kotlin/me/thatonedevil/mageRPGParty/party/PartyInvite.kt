@@ -26,7 +26,7 @@ class PartyInvite(val party: Party, val invitedMember: UUID) {
 
     private fun startExpirationTimer() {
         expirationTask = Bukkit.getScheduler().runTaskLater(
-            MageRPGParty.Companion.instance,
+            MageRPGParty.instance,
             Runnable {
                 if (status == InviteStatus.PENDING) {
                     expire()

@@ -1,6 +1,6 @@
 package me.thatonedevil.mageRPGParty.api.party
 
-import me.thatonedevil.devilLib.bridge.DevilExport
+import me.thatonedevil.devilLib.apiBridge.DevilExport
 import me.thatonedevil.mageRPGParty.party.Party
 import me.thatonedevil.mageRPGParty.party.PartyManager
 import java.util.UUID
