@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm") version "2.3.20-Beta1"
     id("com.gradleup.shadow") version "8.3.0"
     id("xyz.jpenilla.run-paper") version "2.3.1"
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.19"
 }
 
 group = "me.thatonedevil"
@@ -19,10 +20,17 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    implementation(kotlin("reflect"))
+    paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.7")
     compileOnly("me.thatonedevil:DevilLib:1.0")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+
+    val cloudVersion = "2.0.0"
+    compileOnly("org.incendo:cloud-core:$cloudVersion")
+    compileOnly("org.incendo:cloud-annotations:$cloudVersion")
+    compileOnly("org.incendo:cloud-kotlin-coroutines:$cloudVersion")
+    compileOnly("org.incendo:cloud-kotlin-coroutines-annotations:$cloudVersion")
+    compileOnly("org.incendo:cloud-paper:2.0.0-beta.14")
 }
 
 tasks {

@@ -1,9 +1,10 @@
 package me.thatonedevil.mageRPGParty
 
 import me.thatonedevil.devilLib.DevilLib
-import me.thatonedevil.mageRPGParty.api.party.PartyAPI
 import me.thatonedevil.mageRPGParty.api.PartyPlaceholder
+import me.thatonedevil.mageRPGParty.api.party.PartyAPI
 import me.thatonedevil.mageRPGParty.commands.MainPartyCommand
+import me.thatonedevil.mageRPGParty.commands.bootstrapCommands
 import me.thatonedevil.mageRPGParty.party.PartyManager
 import org.bukkit.Bukkit
 import org.bukkit.plugin.java.JavaPlugin
@@ -36,7 +37,8 @@ class MageRPGParty : JavaPlugin() {
     }
 
     private fun registerCommands() {
-        MainPartyCommand().register(this)
+        val commands = bootstrapCommands(MainPartyCommand)
+        logger.info("Loaded ${commands.loadedCount} commands")
     }
 
     private fun registerListeners() {

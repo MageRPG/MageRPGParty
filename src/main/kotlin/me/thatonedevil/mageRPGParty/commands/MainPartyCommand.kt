@@ -1,75 +1,39 @@
 package me.thatonedevil.mageRPGParty.commands
 
-import com.mojang.brigadier.builder.LiteralArgumentBuilder
-import com.mojang.brigadier.context.CommandContext
-import io.papermc.paper.command.brigadier.CommandSourceStack
-import io.papermc.paper.command.brigadier.Commands
-import me.thatonedevil.devilLib.commands.*
 import me.thatonedevil.devilLib.utils.Utils.noMessage
 import me.thatonedevil.devilLib.utils.Utils.yesMessage
 import me.thatonedevil.mageRPGParty.MageRPGParty.Companion.partyManager
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
+import org.incendo.cloud.annotations.Argument
+import org.incendo.cloud.annotations.Command
+import org.incendo.cloud.annotations.CommandDescription
+import org.incendo.cloud.annotations.suggestion.Suggestions
+import org.incendo.cloud.context.CommandContext
+import org.incendo.cloud.suggestion.Suggestion
 
-class MainPartyCommand : DevilCommand {
+@Command("party")
+@CommandDescription("Party management commands")
+object MainPartyCommand {
 
-    override val name = "party"
-    override val playerOnly = true
+    private const val TEAM_SIZE = 6
 
-    val TEAM_SIZE = 6
-
-    val targetArg = playerArg("player")
-
-    override fun customArguments(
-        builder: LiteralArgumentBuilder<CommandSourceStack>
-    ): LiteralArgumentBuilder<CommandSourceStack> = builder
-        .then(Commands.literal("create").executes { create(it) })
-        .then(
-            Commands.literal("invite")
-                .then(targetArg.buildNode().executes { invite(it) })
-        )
-        .then(Commands.literal("accept").executes { accept(it) })
-        .then(Commands.literal("decline").executes { decline(it) })
-        .then(Commands.literal("leave").executes { leave(it) })
-        .then(
-            Commands.literal("kick")
-                .then(targetArg.buildNode().executes { kick(it) })
-        )
-        .then(Commands.literal("disband").executes { disband(it) })
-        .then(Commands.literal("info").executes { info(it) })
-
-    override fun execute(sender: CommandSender, ctx: CommandContext<CommandSourceStack>) {
-        (sender as Player).noMessage(
-            "<color:#FF5555>Usage: <color:#d45252>/party <create|invite|accept|decline|leave|kick|disband|info>"
-        )
-    }
-
-    private fun resolveTarget(ctx: CommandContext<CommandSourceStack>, player: Player): Player? {
-        return runCatching { ctx.resolvePlayer(targetArg) }.getOrElse {
-            player.noMessage("<color:#FF5555>Player not <color:#d45252>found!")
-            null
-        }
-    }
-
-    private fun create(ctx: CommandContext<CommandSourceStack>): Int {
-        val player = ctx.source.executor as Player
-
+    @Command("create")
+    @CommandDescription("Create a new party")
+    fun create(player: Player) {
         if (partyManager.createParty(player.uniqueId) == null) {
             player.noMessage("<color:#FF5555>You are already in a <color:#d45252>party!")
-            return DevilCommand.FAILURE
+            return
         }
-
         player.yesMessage("<color:#77DD77>Party created <color:#35cd35>successfully!")
-        return DevilCommand.SUCCESS
     }
 
-    private fun invite(ctx: CommandContext<CommandSourceStack>): Int {
-        val player = ctx.source.executor as Player
-        val target = resolveTarget(ctx, player) ?: return DevilCommand.FAILURE
-
+    @Command("invite <target>")
+    @CommandDescription("Invite a player to your party")
+    fun invite(player: Player, @Argument("target") target: Player) {
         if (target.uniqueId == player.uniqueId) {
             player.noMessage("<color:#FF5555>You cannot invite <color:#d45252>yourself!")
-            return DevilCommand.FAILURE
+            return
         }
 
         val party = partyManager.getParty(player.uniqueId)
@@ -77,21 +41,20 @@ class MainPartyCommand : DevilCommand {
         if (party == null) {
             partyManager.createParty(player.uniqueId) ?: run {
                 player.noMessage("<color:#FF5555>Failed to create <color:#d45252>party!")
-                return DevilCommand.FAILURE
+                return
             }
             player.yesMessage("<color:#77DD77>Party created <color:#35cd35>successfully!")
         } else {
             if (party.leader != player.uniqueId) {
                 player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
-                return DevilCommand.FAILURE
+                return
             }
-
             if (party.size >= TEAM_SIZE) {
                 player.noMessage(
                     "<color:#FF5555>Your party is <color:#d45252>full<color:#FF5555>! " +
                             "Maximum size is <color:#d45252>$TEAM_SIZE <color:#FF5555>players."
                 )
-                return DevilCommand.FAILURE
+                return
             }
         }
 
@@ -100,118 +63,104 @@ class MainPartyCommand : DevilCommand {
                 "<color:#FF5555>Could not invite player! They may already be in a <color:#d45252>party " +
                         "<color:#FF5555>or have a <color:#d45252>pending invite<color:#FF5555>."
             )
-            return DevilCommand.FAILURE
         }
-
-        return DevilCommand.SUCCESS
     }
 
-    private fun accept(ctx: CommandContext<CommandSourceStack>): Int {
-        val player = ctx.source.executor as Player
-        if (!requirePendingInvite(player)) return DevilCommand.FAILURE
+    @Command("accept")
+    @CommandDescription("Accept a pending party invite")
+    fun accept(player: Player) {
+        if (!requirePendingInvite(player)) return
 
         if (!partyManager.acceptInvite(player.uniqueId)) {
             player.noMessage("<color:#FF5555>Failed to accept invite! It may have <color:#d45252>expired<color:#FF5555>.")
-            return DevilCommand.FAILURE
+            return
         }
-
         player.yesMessage("<color:#77DD77>Party invite accepted <color:#35cd35>successfully!")
-        return DevilCommand.SUCCESS
     }
 
-    private fun decline(ctx: CommandContext<CommandSourceStack>): Int {
-        val player = ctx.source.executor as Player
-        if (!requirePendingInvite(player)) return DevilCommand.FAILURE
+    @Command("decline")
+    @CommandDescription("Decline a pending party invite")
+    fun decline(player: Player) {
+        if (!requirePendingInvite(player)) return
 
         if (!partyManager.declineInvite(player.uniqueId)) {
             player.noMessage("<color:#FF5555>Failed to decline invite! It may have <color:#d45252>expired<color:#FF5555>.")
-            return DevilCommand.FAILURE
+            return
         }
-
         player.yesMessage("<color:#77DD77>Party invite declined <color:#35cd35>successfully!")
-        return DevilCommand.SUCCESS
     }
 
-    private fun leave(ctx: CommandContext<CommandSourceStack>): Int {
-        val player = ctx.source.executor as Player
-        if (!requireInParty(player)) return DevilCommand.FAILURE
+    @Command("leave")
+    @CommandDescription("Leave your current party")
+    fun leave(player: Player) {
+        if (!requireInParty(player)) return
 
-        val party = partyManager.getParty(player.uniqueId) ?: return DevilCommand.FAILURE
+        val party = partyManager.getParty(player.uniqueId) ?: return
 
         if (party.leader == player.uniqueId) {
-            if (!partyManager.disbandParty(player.uniqueId)) return DevilCommand.FAILURE
+            if (!partyManager.disbandParty(player.uniqueId)) return
             player.yesMessage("<color:#77DD77>You have disbanded the party.")
         } else {
-            if (!partyManager.leaveParty(player.uniqueId)) return DevilCommand.FAILURE
+            if (!partyManager.leaveParty(player.uniqueId)) return
             player.yesMessage("<color:#77DD77>You have left the party <color:#35cd35>successfully!")
         }
-
-        return DevilCommand.SUCCESS
     }
 
-    private fun kick(ctx: CommandContext<CommandSourceStack>): Int {
-        val player = ctx.source.executor as Player
-        if (!requireInParty(player)) return DevilCommand.FAILURE
+    @Command("kick <target>")
+    @CommandDescription("Kick a player from your party")
+    fun kick(player: Player, @Argument("target") target: Player) {
+        if (!requireInParty(player)) return
 
-        val party = partyManager.getParty(player.uniqueId) ?: return DevilCommand.FAILURE
+        val party = partyManager.getParty(player.uniqueId) ?: return
 
         if (party.leader != player.uniqueId) {
             player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
-            return DevilCommand.FAILURE
+            return
         }
-
         if (party.size <= 2) {
             player.noMessage(
                 "<color:#FF5555>Cannot kick from a <color:#d45252>2-person party<color:#FF5555>! " +
                         "Use <color:#d45252>/party disband <color:#FF5555>instead."
             )
-            return DevilCommand.FAILURE
+            return
         }
-
-        val target = resolveTarget(ctx, player) ?: return DevilCommand.FAILURE
-
         if (target.uniqueId == player.uniqueId) {
             player.noMessage(
                 "<color:#FF5555>You cannot kick <color:#d45252>yourself<color:#FF5555>! " +
                         "Use <color:#d45252>/party leave <color:#FF5555>instead."
             )
-            return DevilCommand.FAILURE
+            return
         }
-
         if (!party.isMember(target.uniqueId)) {
             player.noMessage("<color:#FF5555>That player is not in your party!")
-            return DevilCommand.FAILURE
+            return
         }
-
         if (!partyManager.kickFromParty(player.uniqueId, target.uniqueId)) {
             player.noMessage("<color:#FF5555>Failed to kick player!")
-            return DevilCommand.FAILURE
+            return
         }
 
         player.yesMessage("<color:#77DD77>Successfully kicked <color:#35cd35>${target.name} <color:#77DD77>from the party!")
         target.noMessage("<color:#FF5555>You have been kicked from the party!")
-        return DevilCommand.SUCCESS
     }
 
-    private fun disband(ctx: CommandContext<CommandSourceStack>): Int {
-        val player = ctx.source.executor as Player
-        if (!requireInParty(player)) return DevilCommand.FAILURE
+    @Command("disband")
+    @CommandDescription("Disband your party")
+    fun disband(player: Player) {
+        if (!requireInParty(player)) return
 
         if (!partyManager.disbandParty(player.uniqueId)) {
             player.noMessage("<color:#FF5555>You are not the <color:#d45252>leader <color:#FF5555>of the party!")
-            return DevilCommand.FAILURE
+            return
         }
-
         player.yesMessage("<color:#77DD77>Party disbanded <color:#35cd35>successfully!")
-        return DevilCommand.SUCCESS
     }
 
-    private fun info(ctx: CommandContext<CommandSourceStack>): Int {
-        val player = ctx.source.executor as Player
-        if (!requireInParty(player)) return DevilCommand.FAILURE
-
+    @Command("info")
+    @CommandDescription("View your party info")
+    fun info(player: Player) {
+        if (!requireInParty(player)) return
         player.sendMessage(partyManager.partyInfo(player.uniqueId))
-        return DevilCommand.SUCCESS
     }
 
     private fun requireInParty(player: Player): Boolean {
