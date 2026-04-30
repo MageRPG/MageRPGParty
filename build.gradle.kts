@@ -1,8 +1,8 @@
 plugins {
-    kotlin("jvm") version "2.3.20-Beta1"
-    id("com.gradleup.shadow") version "8.3.0"
-    id("xyz.jpenilla.run-paper") version "2.3.1"
-    id("io.papermc.paperweight.userdev") version "2.0.0-beta.19"
+    kotlin("jvm") version "2.4.0-Beta2"
+    id("com.gradleup.shadow") version "9.4.1"
+    id("io.papermc.paperweight.userdev") version "2.0.0-beta.21"
+    id("xyz.jpenilla.run-paper") version "3.0.2"
 }
 
 group = "me.thatonedevil"
@@ -24,13 +24,6 @@ dependencies {
     paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
     compileOnly("me.clip:placeholderapi:2.11.7")
     compileOnly("me.thatonedevil:DevilLib:1.0")
-
-    val cloudVersion = "2.0.0"
-    compileOnly("org.incendo:cloud-core:$cloudVersion")
-    compileOnly("org.incendo:cloud-annotations:$cloudVersion")
-    compileOnly("org.incendo:cloud-kotlin-coroutines:$cloudVersion")
-    compileOnly("org.incendo:cloud-kotlin-coroutines-annotations:$cloudVersion")
-    compileOnly("org.incendo:cloud-paper:2.0.0-beta.14")
 }
 
 tasks {
@@ -38,7 +31,6 @@ tasks {
         minecraftVersion("1.21.11")
         downloadPlugins {
             modrinth("placeholderapi", "2.12.2")
-            modrinth("plugmanx", "3.0.3")
         }
 
     }
